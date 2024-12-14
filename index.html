@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart RC Car Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <div class="container mx-auto px-4 py-8">
+        <div class="bg-white shadow-lg rounded-xl p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">Smart RC Car Control</h1>
+                <div id="clock" class="text-xl text-gray-600"></div>
+            </div>
+
+            <!-- Mode Toggle -->
+            <div class="mb-6 flex justify-between items-center">
+                <div>
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="modeToggle" class="sr-only peer">
+                        <div class="relative w-16 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-7 after:w-7 after:transition-all peer-checked:bg-blue-600"></div>
+                        <span class="ml-3 text-sm font-medium text-gray-900">
+                            <span id="modeText">Manual Mode</span>
+                        </span>
+                    </label>
+                </div>
+                
+                <!-- Fan Control Toggle -->
+                <div>
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="fanToggle" class="sr-only peer">
+                        <div class="relative w-16 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-7 after:w-7 after:transition-all peer-checked:bg-green-600"></div>
+                        <span class="ml-3 text-sm font-medium text-gray-900">
+                            <span id="fanText">Fan Off</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Environmental Data -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-blue-100 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-2">Air Quality Index</h3>
+                    <div id="aqi" class="text-3xl font-bold text-blue-700">--</div>
+                </div>
+                <div class="bg-green-100 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-2">Humidity</h3>
+                    <div id="humidity" class="text-3xl font-bold text-green-700">--</div>
+                </div>
+                <div class="bg-red-100 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-2">Temperature</h3>
+                    <div id="temperature" class="text-3xl font-bold text-red-700">--</div>
+                </div>
+            </div>
+
+            <!-- RC Car Controls -->
+            <div id="manualControls" class="space-y-4">
+                <div class="flex justify-center items-center space-x-4 mb-4">
+                    <label for="speedControl" class="text-lg font-medium">Speed:</label>
+                    <input type="range" id="speedControl" min="0" max="100" value="50" class="w-64 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <span id="speedValue" class="text-lg font-semibold">50%</span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 justify-items-center">
+                    <button id="btnMaju" class="w-20 h-20 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300 transition duration-300 ease-in-out transform hover:-translate-y-1">
+                        ⬆️ Maju
+                    </button>
+                    <div class="grid grid-cols-1 gap-4">
+                        <button id="btnKiri" class="w-20 h-20 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300 transition duration-300 ease-in-out transform hover:-translate-y-1">
+                            ⬅️ Kiri
+                        </button>
+                        <button id="btnStop" class="w-20 h-20 bg-red-500 text-white rounded-full hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-300 transition duration-300 ease-in-out">
+                            ⏹️ Berhenti
+                        </button>
+                        <button id="btnKanan" class="w-20 h-20 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300 transition duration-300 ease-in-out transform hover:translate-y-1">
+                            ➡️ Kanan
+                        </button>
+                    </div>
+                    <button id="btnMundur" class="w-20 h-20 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300 transition duration-300 ease-in-out transform hover:translate-y-1">
+                        ⬇️ Mundur
+                    </button>
+                </div>
+            </div>
+
+            <!-- Automatic Mode Content (Placeholder) -->
+            <div id="automaticControls" class="hidden text-center py-12">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">Automatic Mode Active</h2>
+                <p class="text-gray-600">RC Car is operating autonomously based on environmental conditions.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import {
+            getDatabase,
+            ref,
+            set,
+            onValue,
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+        // Firebase configuration (replace with your own configuration)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDI5xyM6goWFH_hetbxKTWkQlzPIkElq0",
+            authDomain: "airguarddb.firebaseapp.com",
+            databaseURL: "https://airguarddb-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "airguarddb",
+            storageBucket: "airguarddb.firebasestorage.app",
+            messagingSenderId: "1003595354532",
+            appId: "1:1003595354532:web:9d09c5806d8ddbf5567131"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Mode Toggle
+        const modeToggle = document.getElementById('modeToggle');
+        const modeText = document.getElementById('modeText');
+        const manualControls = document.getElementById('manualControls');
+        const automaticControls = document.getElementById('automaticControls');
+
+        modeToggle.addEventListener('change', () => {
+            if (modeToggle.checked) {
+                modeText.textContent = 'Automatic Mode';
+                manualControls.classList.add('hidden');
+                automaticControls.classList.remove('hidden');
+                // Send automatic mode command to Firebase
+                set(ref(db, "controls/mode"), "automatic");
+            } else {
+                modeText.textContent = 'Manual Mode';
+                manualControls.classList.remove('hidden');
+                automaticControls.classList.add('hidden');
+                // Send manual mode command to Firebase
+                set(ref(db, "controls/mode"), "manual");
+            }
+        });
+
+        // Fan Toggle
+        const fanToggle = document.getElementById('fanToggle');
+        const fanText = document.getElementById('fanText');
+
+        fanToggle.addEventListener('change', () => {
+            if (fanToggle.checked) {
+                fanText.textContent = 'Fan On';
+                // Send fan on command to Firebase
+                set(ref(db, "controls/fan"), "on");
+            } else {
+                fanText.textContent = 'Fan Off';
+                // Send fan off command to Firebase
+                set(ref(db, "controls/fan"), "off");
+            }
+        });
+
+        // Speed Control
+        const speedControl = document.getElementById('speedControl');
+        const speedValue = document.getElementById('speedValue');
+
+        speedControl.addEventListener('input', () => {
+            speedValue.textContent = `${speedControl.value}%`;
+            // Send speed to Firebase
+            set(ref(db, "controls/speed"), speedControl.value);
+        });
+
+        let interval; // Store interval ID for continuous commands
+
+        function stopCar() {
+            set(ref(db, "controls/direction"), "stop")
+                .then(() => console.log(`[SUCCESS] Command 'stop' sent`))
+                .catch((error) => console.error(`[ERROR] Failed to send 'stop':`, error));
+        }
+
+        function controlCar(direction) {
+            set(ref(db, "controls/direction"), direction)
+                .then(() => console.log(`[SUCCESS] Command '${direction}' sent`))
+                .catch((error) => console.error(`[ERROR] Failed to send '${direction}':`, error));
+        }
+
+        function setupHoldButton(buttonId, direction) {
+            const button = document.getElementById(buttonId);
+
+            button.addEventListener('mousedown', () => {
+                if (!modeToggle.checked) { // Only allow in manual mode
+                    controlCar(direction);
+                    interval = setInterval(() => controlCar(direction), 100);
+                }
+            });
+
+            button.addEventListener('mouseup', () => {
+                clearInterval(interval);
+                stopCar();
+            });
+
+            button.addEventListener('mouseleave', () => {
+                clearInterval(interval);
+                stopCar();
+            });
+        }
+
+        setupHoldButton("btnMaju", "maju");
+        setupHoldButton("btnMundur", "mundur");
+        setupHoldButton("btnKiri", "kiri");
+        setupHoldButton("btnKanan", "kanan");
+        setupHoldButton("btnStop", "stop");
+
+        // Environmental Data Listeners
+        onValue(ref(db, "environment/aqi"), (snapshot) => {
+            const aqi = snapshot.val();
+            document.getElementById('aqi').textContent = `${aqi || '--'} AQI`;
+        });
+
+        onValue(ref(db, "environment/humidity"), (snapshot) => {
+            const humidity = snapshot.val();
+            document.getElementById('humidity').textContent = `${humidity || '--'}%`;
+        });
+
+        onValue(ref(db, "environment/temperature"), (snapshot) => {
+            const temperature = snapshot.val();
+            document.getElementById('temperature').textContent = `${temperature || '--'}°C`;
+        });
+
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            const clock = document.getElementById('clock');
+            clock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>
